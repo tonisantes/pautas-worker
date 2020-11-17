@@ -17,7 +17,7 @@ public class RabbitMQ {
 	public final static String FILA_CONTABILIZAR_VOTO = "pautas.contabilizar-voto";
 	public final static String FILA_CONTABILIZAR_VOTO_DLQ = "pautas.contabilizar-voto.dlq";
 	public final static String FILA_VERIFICAR_STATUS_PAUTA = "pautas.verificar-status-pauta";
-	public final static String FILA_STATUS_PAUTA = "pautas.status-pauta";
+	public final static String FILA_RESULTADO_PAUTA = "pautas.resultado-pauta";
 
 	@Bean
 	Queue contabilizarVotoQueue() {
@@ -37,8 +37,8 @@ public class RabbitMQ {
 	}
 
 	@Bean
-	Queue statusPautaQueue() {
-		return QueueBuilder.durable(FILA_STATUS_PAUTA).build();
+	Queue resultadoPautaQueue() {
+		return QueueBuilder.durable(FILA_RESULTADO_PAUTA).build();
 	}
 
 	@Bean

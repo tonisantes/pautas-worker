@@ -73,13 +73,15 @@ public class Tasks {
 
         pautaRepository.save(pauta);
 
-        StatusPautaDTO statusPauta = StatusPautaDTO.create(pauta);
+        if (pauta.getStatus() == StatusPauta.CONCLUIDA) {
+            StatusPautaDTO statusPauta = StatusPautaDTO.create(pauta);
         
-        log.info(statusPauta.toString());
+            log.info("Pauta concluída: " + statusPauta.toString());
+    
+            rabbitTemplate.convertAndSend(RabbitMQ.FILA_RESULTADO_PAUTA, statusPauta);
+        }
 
-        rabbitTemplate.convertAndSend(RabbitMQ.FILA_STATUS_PAUTA, statusPauta);
-
-        if (pauta.getStatus() != StatusPauta.CONCLUIDA) {
+        else {
             Thread.sleep(5000);
             rabbitTemplate.convertAndSend(RabbitMQ.FILA_VERIFICAR_STATUS_PAUTA, pauta.getId());
         }
