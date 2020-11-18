@@ -1,56 +1,23 @@
 package desafiosicredi.pautasworker;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-
-import com.mysql.cj.log.Log;
-
-import org.springframework.transaction.annotation.Transactional;
-
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
-import org.springframework.http.HttpStatus;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Headers;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
-import desafiosicredi.pautasworker.config.RabbitMQ;
+import desafiosicredi.pautasworker.config.RabbitMQConfig;
 import desafiosicredi.pautasworker.dto.StatusPautaDTO;
 import desafiosicredi.pautasworker.model.Pauta;
 import desafiosicredi.pautasworker.model.StatusPauta;
-import desafiosicredi.pautasworker.model.StatusVoto;
-import desafiosicredi.pautasworker.model.Voto;
-import desafiosicredi.pautasworker.repositories.PautaRepository;
-import desafiosicredi.pautasworker.repositories.VotoRepository;
 import desafiosicredi.pautasworker.services.PautaService;
 import desafiosicredi.pautasworker.services.VotoService;
 
 
 @Component
 public class Tasks {
-
-    private static final Logger log = LoggerFactory.getLogger(Tasks.class);
-
-    @Autowired
-    private PautaRepository pautaRepository;
-
-    @Autowired
-    private VotoRepository votoRepository;
     
     @Autowired
     private RabbitTemplate rabbitTemplate;
-
-    @Autowired
-    private RestTemplate restTemplate;
 
     @Autowired
     private VotoService votoService;
@@ -58,26 +25,55 @@ public class Tasks {
     @Autowired
     private PautaService pautaService;
 
-    @RabbitListener(queues = RabbitMQ.FILA_VERIFICAR_STATUS_PAUTA, concurrency = "5")
+    /**
+     * Consumidor que verifica de tempos em tesmpos o status de uma pauta.
+     * Essa verficação consiste em alterar o status da pauta e concluía quando todos os votos
+     * tiverem sido processados.
+     */
+    @RabbitListener(queues = RabbitMQConfig.FILA_VERIFICAR_STATUS_PAUTA, concurrency = "5")
     public void verificarPauta(Integer pautaId) throws Exception {
+
+        // Delega para o Service fazer a verificação (ver os comentários do Service para mais detalhes).
         Pauta pauta = pautaService.verificar(pautaId);
 
+        // Caso a pauta não exista apenas retorna.
+        if (pauta == null) {
+            return;
+        }
+        
+        /*
+         Caso a pauta ainda não esteja concluída aguardo 5 segundos e reenfilero
+         a mesma mensagem para nova verificação.
+        */
         if (pauta.getStatus() != StatusPauta.CONCLUIDA) {
-            Thread.sleep(5000);
-            rabbitTemplate.convertAndSend(RabbitMQ.FILA_VERIFICAR_STATUS_PAUTA, pauta.getId());
+            Thread.sleep(5000); // 5 Segundos
+            rabbitTemplate.convertAndSend(RabbitMQConfig.FILA_VERIFICAR_STATUS_PAUTA, pauta.getId());
             return;
         }
 
+        /*
+        Se a pauta está concluída envio o resultado para outra fila.
+        */
         StatusPautaDTO statusPauta = StatusPautaDTO.create(pauta);    
-        rabbitTemplate.convertAndSend(RabbitMQ.FILA_RESULTADO_PAUTA, statusPauta);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.FILA_RESULTADO_PAUTA, statusPauta);
     }
 
-    @RabbitListener(queues = RabbitMQ.FILA_CONTABILIZAR_VOTO, concurrency = "10")
+    /**
+     * Consumidor para processar um voto.
+     */
+    @RabbitListener(queues = RabbitMQConfig.FILA_CONTABILIZAR_VOTO, concurrency = "10")
     public void contabilizarVoto(Integer votoId) throws Exception {
+
+        // Delego para o Service processar o voto (ver os comentários do Service para mais detalhes)
         votoService.contabilizar(votoId);
     }
 
-    @RabbitListener(queues = RabbitMQ.FILA_CONTABILIZAR_VOTO_DLQ, concurrency = "2")
+    /**
+     * Caso haja erros inesperados no processamento de um voto
+     * mesmo depois de todas as retentivas, então o voto cai nesse consumidor
+     * que na pratica vai descartar/desistir de processar o voto.
+     */
+    @RabbitListener(queues = RabbitMQConfig.FILA_CONTABILIZAR_VOTO_DLQ, concurrency = "2")
     public void descartarVoto(Integer votoId) throws Exception {
         votoService.descartar(votoId);
     }

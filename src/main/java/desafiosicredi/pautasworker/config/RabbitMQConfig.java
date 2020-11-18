@@ -12,13 +12,13 @@ import org.springframework.context.annotation.Configuration;
 
 
 @Configuration
-public class RabbitMQ {
+public class RabbitMQConfig {
 
 	public final static String FILA_CONTABILIZAR_VOTO = "pautas.contabilizar-voto";
 	public final static String FILA_CONTABILIZAR_VOTO_DLQ = "pautas.contabilizar-voto.dlq";
 	public final static String FILA_VERIFICAR_STATUS_PAUTA = "pautas.verificar-status-pauta";
 	public final static String FILA_RESULTADO_PAUTA = "pautas.resultado-pauta";
-
+	
 	@Bean
 	Queue contabilizarVotoQueue() {
 		return QueueBuilder.durable(FILA_CONTABILIZAR_VOTO)
