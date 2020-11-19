@@ -1,6 +1,10 @@
 # Pautas Worker
 
-## Pré-requisitos
+Decidi criar esse componente pois achei por bem realizar o processamento dos votos de forma assincrona. O maior motivador dessa decisão foi o fato de em cada voto ser necessário consultar um sistema externo para validação do CPF do associado (como sugerido pelas tarefas bônus do desafio). Como não tenho controle da estabilidade de um sistema externo, considero sensato manter o processamento assincrono.
+
+Também utilizo esse componente para verificar de tempos em tempos se uma sessão de uma pauta já encerrou, ou se foi concluída, ou se ainda está aguardando o processamento dos votos.
+
+## Pré-requisitos para rodar
 
 Tenologias utilizadas:
 - `JAVA - openjdk version "11.0.9" 2020-10-20`
@@ -25,3 +29,5 @@ docker run --rm --hostname localhost --name postgres-test -p 5432:5432 -e POSTGR
 ```bash
 mvn spring-boot:run
 ```
+
+Mais detalhes em https://github.com/tonisantes/pautas-api
